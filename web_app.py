@@ -21,7 +21,7 @@ app = Flask(__name__)
 def home():
     return send_from_directory(".", "index.html")
 
-# Serve app.js directly
+# Serve app.js directly from root
 @app.route("/app.js")
 def frontend_js():
     return send_from_directory(".", "app.js")
