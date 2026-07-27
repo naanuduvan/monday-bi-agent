@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Founder BI Agent</title>
+</head>
+<body>
+  <h1>Founder BI Agent</h1>
+
+  <!-- Ask a question -->
+  <div>
+    Ask a question: 
+    <input id="askInput" type="text" placeholder="e.g. Deals this quarter">
+    <button id="askButton">Ask</button>
+  </div>
+
+  <!-- Quick Dashboards -->
+  <h2>Quick Dashboards</h2>
+  <button onclick="sendPrompt('total pipeline value')">Overview</button>
+  <button onclick="sendPrompt('sector summary')">Sector Breakdown</button>
+  <button onclick="sendPrompt('deals by quarter')">Quarterly Trend</button>
+
+  <!-- Answer -->
+  <h2>Answer:</h2>
+  <pre id="answer"></pre>
+
+  <!-- Link to frontend logic -->
+  <script src="./app.js"></script>
+</body>
+</html>
