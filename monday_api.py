@@ -17,7 +17,6 @@ def run_query(query):
         raise Exception(data["errors"])
     return data
 
-
 def fetch_board(board_id, column_ids=None):
     """
     Fetch items from a board.
@@ -55,7 +54,7 @@ def fetch_board(board_id, column_ids=None):
                 id
                 name
                 column_values {{
-                  column {{ title }}
+                  id
                   text
                 }}
               }}
@@ -67,6 +66,37 @@ def fetch_board(board_id, column_ids=None):
     data = run_query(query)
     return data["data"]["boards"][0]["items_page"]["items"]
 
+def get_board_items(board_id):
+    """
+    Fetch all items from a board with all column values.
+    Used by web_app.py for dashboards.
+    """
+    query = f"""
+    {{
+      boards(ids: {board_id}) {{
+        items {{
+          id
+          name
+          column_values {{
+            id
+            text
+          }}
+        }}
+      }}
+    }}
+    """
+    result = run_query(query)
+    items = result["data"]["boards"][0]["items"]
+
+    # Flatten into dicts for Pandas
+    flattened = []
+    for item in items:
+        row = {"id": item["id"], "name": item["name"]}
+        for col in item["column_values"]:
+            row[col["id"]] = col["text"]
+        flattened.append(row)
+
+    return flattened
 
 def get_deals():
     # Use the actual IDs from your Deals board
@@ -76,7 +106,6 @@ def get_deals():
         "color_mm5nrjez"       # Sector/service
     ])
 
-
 def get_work_orders():
     # Use the actual IDs from your Work Orders board
     return fetch_board(WORK_BOARD_ID, column_ids=[
@@ -84,7 +113,6 @@ def get_work_orders():
         "numeric_mm5nc8jf",    # Amount in Rupees (Excl of GST) (Masked)
         "numeric_mm5nd8vs"     # Amount in Rupees (Incl of GST) (Masked)
     ])
-
 
 # Run this file directly to test the API
 if __name__ == "__main__":
