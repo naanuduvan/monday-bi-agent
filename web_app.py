@@ -1,54 +1,106 @@
-from flask import Flask, request, jsonify
-import pandas as pd
-from monday_api import get_board_items
+from flask import Flask, request, render_template_string
+import plotly.express as px
+from plotly.io import to_html
+
+from monday_api import get_deals, get_work_orders
+from data_processor import board_to_dataframe, convert_numeric
+from prompts import interpret_query
 from business_logic import (
-    total_pipeline_value,
-    open_deals,
-    won_deals,
     sector_summary,
-    execution_summary,
-    deals_this_quarter,
-    deals_by_sector_this_quarter,
+    deals_by_quarter_with_fallback,
     sector_value_this_quarter,
-    deals_by_quarter_with_fallback
+    deals_this_quarter   # <-- NEW import
 )
-from config import DEALS_BOARD_ID
 
 app = Flask(__name__)
 
-@app.route("/query", methods=["POST"])
-def query():
-    data = request.json
-    prompt = data.get("prompt", "").lower()
+# Load data once at startup
+deals = get_deals()
+work_orders = get_work_orders()
+deals_df = convert_numeric(board_to_dataframe(deals), ["numeric_mm5n112n"])
+work_df = convert_numeric(board_to_dataframe(work_orders), ["numeric_mm5nc8jf", "numeric_mm5nd8vs"])
 
-    df = pd.DataFrame(get_board_items(DEALS_BOARD_ID))
+HTML_TEMPLATE = """
+<!doctype html>
+<title>Founder BI Agent</title>
+<h1>Founder BI Agent</h1>
 
-    PROMPT_MAP = {
-        "total pipeline value": lambda df: total_pipeline_value(df),
-        "open deals": lambda df: open_deals(df),
-        "won deals": lambda df: won_deals(df),
-        "sector summary": lambda df: sector_summary(df),
-        "execution summary": lambda df: execution_summary(df),
-        "deals this quarter": lambda df: deals_this_quarter(df),
-        "mining pipeline this quarter": lambda df: deals_by_sector_this_quarter(df, "Mining"),
-        "sector value this quarter": lambda df: sector_value_this_quarter(df),
-        "deals by quarter": lambda df: deals_by_quarter_with_fallback(df),
-    }
+<form method="post">
+  <label>Ask a question:</label><br>
+  <input type="text" name="query" style="width:400px">
+  <input type="submit" value="Ask">
+</form>
 
-    if prompt in PROMPT_MAP:
-        result = PROMPT_MAP[prompt](df)
+<h2>Quick Dashboards</h2>
+<form method="post">
+  <button name="preset" value="overview">Overview</button>
+  <button name="preset" value="sector">Sector Breakdown</button>
+  <button name="preset" value="quarterly">Quarterly Trend</button>
+</form>
 
-        if result is None or (hasattr(result, "empty") and result.empty):
-            return jsonify({"message": "No data available for this query"})
+{% if answer %}
+  <h2>Answer:</h2>
+  <pre>{{ answer }}</pre>
+{% endif %}
+{% if chart %}
+  <h2>Chart:</h2>
+  {{ chart|safe }}
+{% endif %}
+"""
 
-        if isinstance(result, pd.Series):
-            return jsonify(result.to_dict())
-        elif isinstance(result, pd.DataFrame):
-            return result.to_json(orient="records")
-        else:
-            return jsonify({"result": result})
-    else:
-        return jsonify({"error": "Unknown prompt"})
+@app.route("/", methods=["GET", "POST"])
+def home():
+    answer = None
+    chart_html = None
+
+    if request.method == "POST":
+        # Handle preset dashboards
+        if "preset" in request.form:
+            preset = request.form["preset"]
+
+            if preset == "overview":
+                answer = f"Total Pipeline Value: {deals_df['numeric_mm5n112n'].sum()}"
+            elif preset == "sector":
+                result = sector_summary(deals_df)
+                answer = str(result)
+                fig = px.bar(result, x=result.index, y=result.values, title="Deals by Sector")
+                chart_html = to_html(fig, full_html=False)
+            elif preset == "quarterly":
+                result = deals_by_quarter_with_fallback(deals_df)
+                answer = str(result)
+                fig = px.bar(result, x=result.index, y=result.values, title="Pipeline Value by Quarter")
+                chart_html = to_html(fig, full_html=False)
+
+        # Handle free‑text queries
+        elif "query" in request.form:
+            query = request.form["query"].lower()
+
+            if "deals this quarter" in query:
+                result = deals_this_quarter(deals_df)
+                answer = str(result)
+                try:
+                    if hasattr(result, "plot"):
+                        if result.__class__.__name__ == "Series":
+                            fig = px.bar(result, x=result.index, y=result.values, title="Deals This Quarter")
+                        else:
+                            fig = px.bar(result, title="Deals This Quarter")
+                        chart_html = to_html(fig, full_html=False)
+                except Exception:
+                    pass
+            else:
+                result = interpret_query(query, deals_df, work_df)
+                answer = str(result)
+                try:
+                    if hasattr(result, "plot"):
+                        if result.__class__.__name__ == "Series":
+                            fig = px.bar(result, x=result.index, y=result.values, title=query)
+                        else:
+                            fig = px.bar(result, title=query)
+                        chart_html = to_html(fig, full_html=False)
+                except Exception:
+                    pass
+
+    return render_template_string(HTML_TEMPLATE, answer=answer, chart=chart_html)
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    app.run(debug=True)
