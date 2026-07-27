@@ -1,32 +1,23 @@
 from monday_api import run_query
 from config import DEALS_BOARD_ID, WORK_BOARD_ID
 
-# Query to list all columns for Deals board
-deals_query = f"""
-{{
-  boards(ids: {DEALS_BOARD_ID}) {{
-    columns {{
-      id
-      title
+def list_columns(board_id, board_name):
+    query = f"""
+    {{
+      boards(ids: {board_id}) {{
+        columns {{
+          id
+          title
+          type
+        }}
+      }}
     }}
-  }}
-}}
-"""
+    """
+    result = run_query(query)
+    print(f"\n=== {board_name} Columns ===")
+    for col in result["data"]["boards"][0]["columns"]:
+        print(f"ID: {col['id']} | Title: {col['title']} | Type: {col['type']}")
 
-# Query to list all columns for Work Orders board
-work_query = f"""
-{{
-  boards(ids: {WORK_BOARD_ID}) {{
-    columns {{
-      id
-      title
-    }}
-  }}
-}}
-"""
-
-print("=== Deals Board Columns ===")
-print(run_query(deals_query))
-
-print("\n=== Work Orders Board Columns ===")
-print(run_query(work_query))
+if __name__ == "__main__":
+    list_columns(DEALS_BOARD_ID, "Deals Board")
+    list_columns(WORK_BOARD_ID, "Work Orders Board")
