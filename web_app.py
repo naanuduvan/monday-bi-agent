@@ -8,7 +8,8 @@ from prompts import interpret_query
 from business_logic import (
     sector_summary,
     deals_by_quarter_with_fallback,
-    sector_value_this_quarter
+    sector_value_this_quarter,
+    deals_this_quarter   # <-- NEW import
 )
 
 app = Flask(__name__)
@@ -72,19 +73,32 @@ def home():
 
         # Handle free‑text queries
         elif "query" in request.form:
-            query = request.form["query"]
-            result = interpret_query(query, deals_df, work_df)
-            answer = str(result)
+            query = request.form["query"].lower()
 
-            try:
-                if hasattr(result, "plot"):
-                    if result.__class__.__name__ == "Series":
-                        fig = px.bar(result, x=result.index, y=result.values, title=query)
-                    else:
-                        fig = px.bar(result, title=query)
-                    chart_html = to_html(fig, full_html=False)
-            except Exception:
-                pass
+            if "deals this quarter" in query:
+                result = deals_this_quarter(deals_df)
+                answer = str(result)
+                try:
+                    if hasattr(result, "plot"):
+                        if result.__class__.__name__ == "Series":
+                            fig = px.bar(result, x=result.index, y=result.values, title="Deals This Quarter")
+                        else:
+                            fig = px.bar(result, title="Deals This Quarter")
+                        chart_html = to_html(fig, full_html=False)
+                except Exception:
+                    pass
+            else:
+                result = interpret_query(query, deals_df, work_df)
+                answer = str(result)
+                try:
+                    if hasattr(result, "plot"):
+                        if result.__class__.__name__ == "Series":
+                            fig = px.bar(result, x=result.index, y=result.values, title=query)
+                        else:
+                            fig = px.bar(result, title=query)
+                        chart_html = to_html(fig, full_html=False)
+                except Exception:
+                    pass
 
     return render_template_string(HTML_TEMPLATE, answer=answer, chart=chart_html)
 
