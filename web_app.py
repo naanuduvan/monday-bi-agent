@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify
 import pandas as pd
 from monday_api import get_board_items
 from business_logic import (
@@ -16,17 +16,6 @@ from config import DEALS_BOARD_ID
 
 app = Flask(__name__)
 
-# Serve index.html directly from root
-@app.route("/")
-def home():
-    return send_from_directory(".", "index.html")
-
-# Serve app.js directly from root
-@app.route("/app.js")
-def frontend_js():
-    return send_from_directory(".", "app.js")
-
-# API route for prompts
 @app.route("/query", methods=["POST"])
 def query():
     data = request.json
@@ -49,7 +38,6 @@ def query():
     if prompt in PROMPT_MAP:
         result = PROMPT_MAP[prompt](df)
 
-        # Fallback if empty or None
         if result is None or (hasattr(result, "empty") and result.empty):
             return jsonify({"message": "No data available for this query"})
 
