@@ -48,6 +48,11 @@ def query():
 
     if prompt in PROMPT_MAP:
         result = PROMPT_MAP[prompt](df)
+
+        # Fallback if empty or None
+        if result is None or (hasattr(result, "empty") and result.empty):
+            return jsonify({"message": "No data available for this query"})
+
         if isinstance(result, pd.Series):
             return jsonify(result.to_dict())
         elif isinstance(result, pd.DataFrame):

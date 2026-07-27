@@ -6,5 +6,8 @@ async function sendPrompt(promptText) {
     body: JSON.stringify({ prompt })
   });
   const data = await response.json();
-  document.getElementById("answer").textContent = JSON.stringify(data, null, 2);
+
+  // Show fallback message if present
+  document.getElementById("answer").textContent =
+    data.message || JSON.stringify(data, null, 2);
 }
