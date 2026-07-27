@@ -16,12 +16,12 @@ from config import DEALS_BOARD_ID
 
 app = Flask(__name__)
 
-# Serve index.html
+# Serve index.html directly from root
 @app.route("/")
 def home():
     return send_from_directory(".", "index.html")
 
-# Serve app.js
+# Serve app.js directly
 @app.route("/app.js")
 def frontend_js():
     return send_from_directory(".", "app.js")
