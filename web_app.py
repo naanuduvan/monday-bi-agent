@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, send_from_directory
 import pandas as pd
 from monday_api import get_board_items
 from business_logic import (
@@ -12,15 +12,19 @@ from business_logic import (
     sector_value_this_quarter,
     deals_by_quarter_with_fallback
 )
-from config import DEALS_BOARD_ID, WORK_BOARD_ID
+from config import DEALS_BOARD_ID
 
-# Flask app, look for index.html in project root
-app = Flask(__name__, template_folder=".", static_folder=".")
+app = Flask(__name__)
 
-# Serve the frontend
+# Serve index.html
 @app.route("/")
 def home():
-    return render_template("index.html")
+    return send_from_directory(".", "index.html")
+
+# Serve app.js
+@app.route("/app.js")
+def frontend_js():
+    return send_from_directory(".", "app.js")
 
 # API route for prompts
 @app.route("/query", methods=["POST"])
